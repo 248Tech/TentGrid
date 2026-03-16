@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src/canvas.ts", "src/enums.ts", "src/ai.ts", "src/review.ts", "src/quotes.ts", "src/alignment.ts", "src/attachment.ts", "src/venue.ts", "src/index.ts"]
+}

@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────────
+
+enum TeamRole {
+  ADMIN
+  SALES
+  DESIGNER
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum ProjectStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum VersionSource {
+  AUTOSAVE
+  MANUAL
+  TEMPLATE_SEED
+  IMPORT
+  AI_DRAFT
+}
+
+enum AssetType {
+  IMAGE_UPLOAD
+  PDF_UPLOAD
+  EXPORT_PNG
+  EXPORT_PDF
+  THUMBNAIL
+  TEMPLATE_PREVIEW
+  TEXTURE
+}
+
+enum AssetStatus {
+  UPLOADING
+  READY
+  FAILED
+  DELETED
+}
+
+enum ExportType {
+  PNG
+  PDF
+}
+
+enum ExportStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum AiJobType {
+  DIAGRAM_INTERPRETATION
+  TEXTURE_GENERATION
+}
+
+enum AiJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum BackgroundMode {
+  GRID
+  SATELLITE
+  HYBRID
+}
+
+enum MeasurementUnit {
+  FT
+  IN
+  M
+}
+
+enum ObjectType {
+  TENT
+  TABLE
+  CHAIR
+  STAGE
+  DANCE_FLOOR
+  BAR
+  RESTROOM
+  LOUNGE
+  FENCE
+  SHAPE
+  TEXT
+  IMAGE_OVERLAY
+  VENUE_BOUNDARY
+  MEASUREMENT
+  CUSTOM
+}
+
+// ── Core Tables ───────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique @db.Text
+  fullName       String    @db.Text
+  authProvider   String    @default("authjs") @db.Text
+  authSubject    String?   @db.Text
+  avatarUrl      String?   @db.Text
+  lastActiveAt   DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  memberships         TeamMembership[] @relation("UserMemberships")
+  invitedMemberships  TeamMembership[] @relation("InvitedByUser")
+  createdProjects     Project[]        @relation("ProjectCreatedBy")
+  updatedProjects     Project[]        @relation("ProjectUpdatedBy")
+  createdVenues       Venue[]          @relation("VenueCreatedBy")
+  updatedVenues       Venue[]          @relation("VenueUpdatedBy")
+  createdTemplates    Template[]       @relation("TemplateCreatedBy")
+  updatedTemplates    Template[]       @relation("TemplateUpdatedBy")
+  projectVersions     ProjectVersion[] @relation("VersionCreatedBy")
+  assets              Asset[]          @relation("AssetCreatedBy")
+  exportJobs          ExportJob[]      @relation("ExportRequestedBy")
+  aiJobs              AiJob[]          @relation("AiJobRequestedBy")
+  auditLogs           AuditLog[]       @relation("AuditActor")
+  reviewComments     ReviewComment[] @relation("CommentAuthor")
+  resolvedComments   ReviewComment[] @relation("CommentResolver")
+  reviewApprovals    ReviewApproval[] @relation("ApprovalReviewer")
+
+  @@unique([authProvider, authSubject])
+  @@map("users")
+}
+
+model Team {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.Text
+  slug      String   @unique @db.Text
+  settings  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  memberships  TeamMembership[]
+  projects     Project[]
+  venues       Venue[]
+  templates    Template[]
+  assets       Asset[]
+  exportJobs   ExportJob[]
+  aiJobs       AiJob[]
+  auditLogs    AuditLog[]
+  reviewComments  ReviewComment[]
+  reviewApprovals ReviewApproval[]
+
+  @@map("teams")
+}
+
+model TeamMembership {
+  id              String           @id @default(uuid()) @db.Uuid
+  teamId          String           @db.Uuid
+  userId          String           @db.Uuid
+  role            TeamRole
+  status          MembershipStatus @default(ACTIVE)
+  invitedByUserId String?          @db.Uuid
+  joinedAt        DateTime?        @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+
+  team        Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User  @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy   User? @relation("InvitedByUser", fields: [invitedByUserId], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([userId, status])
+  @@map("team_memberships")
+}
+
+model Venue {
+  id                  String         @id @default(uuid()) @db.Uuid
+  teamId              String         @db.Uuid
+  name                String         @db.Text
+  venueCode           String?        @db.Text
+  addressLine1        String?        @db.Text
+  addressLine2        String?        @db.Text
+  city                String?        @db.Text
+  state               String?        @db.Text
+  postalCode          String?        @db.Text
+  country             String?        @db.Text
+  latitude            Decimal?       @db.Decimal(9, 6)
+  longitude           Decimal?       @db.Decimal(9, 6)
+  defaultBackgroundMode BackgroundMode @default(GRID)
+  defaultMapView      Json?          @db.JsonB
+  geometry            Json?          @db.JsonB
+  fixtures            Json?          @db.JsonB
+  utilities           Json?          @db.JsonB
+  notes               String?        @db.Text
+  createdByUserId     String?        @db.Uuid
+  updatedByUserId     String?        @db.Uuid
+  createdAt           DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @db.Timestamptz(6)
+  archivedAt          DateTime?      @db.Timestamptz(6)
+
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation("VenueCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy   User?     @relation("VenueUpdatedBy", fields: [updatedByUserId], references: [id])
+  projects    Project[]
+
+  @@index([teamId, name])
+  @@index([teamId, city, state])
+  @@map("venues")
+}
+
+model Template {
+  id                    String    @id @default(uuid()) @db.Uuid
+  teamId                String    @db.Uuid
+  name                  String    @db.Text
+  category              String?   @db.Text
+  description           String?   @db.Text
+  previewAssetId        String?   @db.Uuid
+  sourceProjectVersionId String?  @db.Uuid
+  canvasDocument        Json?     @db.JsonB
+  countsSummary         Json?     @db.JsonB
+  createdByUserId       String?   @db.Uuid
+  updatedByUserId       String?   @db.Uuid
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt            DateTime? @db.Timestamptz(6)
+
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation("TemplateCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy   User?     @relation("TemplateUpdatedBy", fields: [updatedByUserId], references: [id])
+  previewAsset Asset?   @relation("TemplatePreview", fields: [previewAssetId], references: [id])
+  projects    Project[]
+
+  @@index([teamId, name])
+  @@index([teamId, category])
+  @@map("templates")
+}
+
+model Project {
+  id                  String        @id @default(uuid()) @db.Uuid
+  teamId              String        @db.Uuid
+  projectNumber       String        @db.Text
+  status              ProjectStatus @default(DRAFT)
+  clientFirstName     String        @db.Text
+  clientLastName      String        @db.Text
+  clientCompany       String?       @db.Text
+  venueNameSnapshot   String?       @db.Text
+  venueId             String?       @db.Uuid
+  templateId          String?       @db.Uuid
+  eventDate           DateTime      @db.Date
+  addressLine1        String?       @db.Text
+  addressLine2        String?       @db.Text
+  city                String?       @db.Text
+  state               String?       @db.Text
+  postalCode          String?       @db.Text
+  country             String?       @db.Text
+  defaultBackgroundMode BackgroundMode @default(GRID)
+  currentVersionId    String?       @db.Uuid
+  guestCountOverride  Int?
+  notes               String?       @db.Text
+  createdByUserId     String?       @db.Uuid
+  updatedByUserId     String?       @db.Uuid
+  createdAt           DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime      @updatedAt @db.Timestamptz(6)
+  archivedAt          DateTime?     @db.Timestamptz(6)
+
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  venue       Venue?    @relation(fields: [venueId], references: [id])
+  template    Template? @relation(fields: [templateId], references: [id])
+  createdBy   User?     @relation("ProjectCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy   User?     @relation("ProjectUpdatedBy", fields: [updatedByUserId], references: [id])
+  versions    ProjectVersion[] @relation("ProjectVersions")
+  exportJobs  ExportJob[]
+  aiJobs      AiJob[]
+
+  @@unique([teamId, projectNumber])
+  @@index([teamId, eventDate])
+  @@index([teamId, status, updatedAt(sort: Desc)])
+  @@map("projects")
+}
+
+model ProjectVersion {
+  id              String        @id @default(uuid()) @db.Uuid
+  projectId       String        @db.Uuid
+  versionNumber   Int
+  source          VersionSource
+  label           String?       @db.Text
+  canvasDocument  Json?         @db.JsonB
+  countsSummary   Json?         @db.JsonB
+  thumbnailAssetId String?      @db.Uuid
+  createdByUserId String?       @db.Uuid
+  autosavedAt     DateTime?     @db.Timestamptz(6)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+
+  project       Project  @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy     User?    @relation("VersionCreatedBy", fields: [createdByUserId], references: [id])
+  thumbnailAsset Asset?  @relation("VersionThumbnail", fields: [thumbnailAssetId], references: [id])
+
+  @@unique([projectId, versionNumber])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([projectId, source, autosavedAt(sort: Desc)])
+  @@map("project_versions")
+}
+
+model LibraryObjectDefinition {
+  id               String     @id @default(uuid()) @db.Uuid
+  teamId           String?    @db.Uuid
+  isSystem         Boolean    @default(false)
+  type             ObjectType
+  subtype          String     @db.Text
+  displayName      String     @db.Text
+  defaultDimensions Json?     @db.JsonB
+  anchorDefinitions Json?     @db.JsonB
+  styleDefaults    Json?      @db.JsonB
+  capacityRules    Json?      @db.JsonB
+  geometryPreset   Json?      @db.JsonB
+  pricingMetadata  Json?      @db.JsonB
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @db.Timestamptz(6)
+
+  @@index([isSystem, type, subtype])
+  @@index([teamId, type, subtype])
+  @@map("library_object_definitions")
+}
+
+model Asset {
+  id               String      @id @default(uuid()) @db.Uuid
+  teamId           String      @db.Uuid
+  type             AssetType
+  status           AssetStatus
+  storageProvider  String      @default("s3") @db.Text
+  bucket           String      @db.Text
+  objectKey        String      @db.Text
+  originalFilename String?     @db.Text
+  mimeType         String?     @db.Text
+  byteSize         BigInt?
+  width            Int?
+  height           Int?
+  pageCount        Int?
+  checksumSha256   String?     @db.Text
+  metadata         Json?       @db.JsonB
+  createdByUserId  String?     @db.Uuid
+  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+  deletedAt        DateTime?   @db.Timestamptz(6)
+
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("AssetCreatedBy", fields: [createdByUserId], references: [id])
+  exportJobs  ExportJob[] @relation("ExportOutput")
+  aiJobInputs AiJob[]  @relation("AiJobInput")
+  templatePreviews Template[] @relation("TemplatePreview")
+  versionThumbnails ProjectVersion[] @relation("VersionThumbnail")
+
+  @@unique([bucket, objectKey])
+  @@index([teamId, type, status, createdAt(sort: Desc)])
+  @@map("assets")
+}
+
+model ExportJob {
+  id                 String       @id @default(uuid()) @db.Uuid
+  teamId             String       @db.Uuid
+  projectId          String       @db.Uuid
+  projectVersionId   String       @db.Uuid
+  requestedByUserId  String       @db.Uuid
+  exportType         ExportType
+  status             ExportStatus
+  parameters         Json?        @db.JsonB
+  outputAssetId      String?      @db.Uuid
+  errorMessage       String?      @db.Text
+  startedAt          DateTime?    @db.Timestamptz(6)
+  completedAt        DateTime?    @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(6)
+
+  team          Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project       Project @relation(fields: [projectId], references: [id])
+  requestedBy   User    @relation("ExportRequestedBy", fields: [requestedByUserId], references: [id])
+  outputAsset   Asset?  @relation("ExportOutput", fields: [outputAssetId], references: [id])
+
+  @@index([teamId, status, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("export_jobs")
+}
+
+model AiJob {
+  id                 String      @id @default(uuid()) @db.Uuid
+  teamId             String      @db.Uuid
+  projectId          String?     @db.Uuid
+  projectVersionId   String?     @db.Uuid
+  requestedByUserId  String      @db.Uuid
+  inputAssetId       String      @db.Uuid
+  outputVersionId    String?     @db.Uuid
+  jobType            AiJobType
+  status             AiJobStatus
+  parameters         Json?       @db.JsonB
+  resultPayload      Json?       @db.JsonB
+  confidence         Decimal?    @db.Decimal(5, 4)
+  errorMessage       String?     @db.Text
+  startedAt          DateTime?   @db.Timestamptz(6)
+  completedAt        DateTime?   @db.Timestamptz(6)
+  createdAt          DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime    @updatedAt @db.Timestamptz(6)
+
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project       Project? @relation(fields: [projectId], references: [id])
+  requestedBy   User     @relation("AiJobRequestedBy", fields: [requestedByUserId], references: [id])
+  inputAsset    Asset    @relation("AiJobInput", fields: [inputAssetId], references: [id])
+
+  @@index([teamId, status, createdAt(sort: Desc)])
+  @@index([teamId, jobType, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("ai_jobs")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  teamId      String   @db.Uuid
+  actorUserId String?  @db.Uuid
+  entityType  String   @db.Text
+  entityId    String   @db.Uuid
+  action      String   @db.Text
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  team    Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actor   User? @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([teamId, entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model ReviewComment {
+  id               String    @id @default(uuid()) @db.Uuid
+  teamId           String    @db.Uuid
+  projectVersionId String    @db.Uuid
+  authorUserId     String    @db.Uuid
+  body             String    @db.Text
+  resolvedAt       DateTime? @db.Timestamptz(6)
+  resolvedByUserId String?   @db.Uuid
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  team        Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author      User  @relation("CommentAuthor", fields: [authorUserId], references: [id])
+  resolvedBy  User? @relation("CommentResolver", fields: [resolvedByUserId], references: [id])
+
+  @@index([teamId, projectVersionId, createdAt(sort: Desc)])
+  @@map("review_comments")
+}
+
+model ReviewApproval {
+  id               String   @id @default(uuid()) @db.Uuid
+  teamId           String   @db.Uuid
+  projectVersionId String   @db.Uuid
+  reviewerUserId   String   @db.Uuid
+  decision         String   @db.Text
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  team     Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reviewer User @relation("ApprovalReviewer", fields: [reviewerUserId], references: [id])
+
+  @@unique([teamId, projectVersionId, reviewerUserId])
+  @@index([teamId, projectVersionId])
+  @@map("review_approvals")
+}
+
+model MaterialPreset {
+  id          String   @id @default(uuid()) @db.Uuid
+  teamId      String?  @db.Uuid
+  isSystem    Boolean  @default(false)
+  name        String   @db.Text
+  category    String   @db.Text
+  objectTypes String[] @db.Text
+  styleConfig Json     @db.JsonB
+  previewUrl  String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([isSystem, category])
+  @@index([teamId, category])
+  @@map("material_presets")
+}

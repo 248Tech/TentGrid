@@ -1,0 +1,9 @@
+node_modules
+.turbo
+.next
+dist
+.git
+.env
+apps/api/.env
+apps/web/.env.local
+packages/types/dist
