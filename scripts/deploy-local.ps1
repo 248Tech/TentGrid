@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 $root = Split-Path -Parent $PSScriptRoot
 $script:DockerCommand = $null
 
@@ -121,43 +122,53 @@ function Wait-Http {
   throw "Timed out waiting for $Url."
 }
 
-Set-Location $root
+function Main {
+  Set-Location $root
 
-$script:DockerCommand = Get-RequiredCommand -Names @("docker", "docker.exe") -Label "Docker"
-Assert-DockerDaemonRunning
+  $script:DockerCommand = Get-RequiredCommand -Names @("docker", "docker.exe") -Label "Docker"
+  Assert-DockerDaemonRunning
 
-if (-not $SkipEnvBootstrap) {
-  Write-Step "Ensuring local environment files exist"
-  Ensure-File -Source (Join-Path $root ".env.example") -Target (Join-Path $root ".env")
-  Ensure-File -Source (Join-Path $root "apps\api\.env.example") -Target (Join-Path $root "apps\api\.env")
-  Ensure-File -Source (Join-Path $root "apps\web\.env.local.example") -Target (Join-Path $root "apps\web\.env.local")
+  if (-not $SkipEnvBootstrap) {
+    Write-Step "Ensuring local environment files exist"
+    Ensure-File -Source (Join-Path $root ".env.example") -Target (Join-Path $root ".env")
+    Ensure-File -Source (Join-Path $root "apps\api\.env.example") -Target (Join-Path $root "apps\api\.env")
+    Ensure-File -Source (Join-Path $root "apps\web\.env.local.example") -Target (Join-Path $root "apps\web\.env.local")
+  }
+
+  Write-Step "Building and starting the full EventGrid stack with Docker Compose"
+  Invoke-CheckedCommand `
+    -FilePath $script:DockerCommand `
+    -Arguments @("compose", "up", "-d", "--build") `
+    -FailureMessage "Docker Compose failed to start the EventGrid stack. Review the Docker output above, fix the reported issue, and rerun scripts\deploy-local.ps1."
+
+  if (-not $SkipWait) {
+    Write-Step "Waiting for EventGrid services"
+    Wait-Port -Port 5432
+    Wait-Port -Port 6379
+    Wait-Port -Port 8000
+    Wait-Port -Port 4000
+    Wait-Port -Port 3000
+    Wait-Http -Url "http://localhost:8000/health" -TimeoutSeconds 90
+    Wait-Http -Url "http://localhost:4000/health" -TimeoutSeconds 120
+    Wait-Http -Url "http://localhost:3000/health" -TimeoutSeconds 120
+  }
+
+  Write-Step "EventGrid deployment complete"
+  Write-Host "Web: http://localhost:3000" -ForegroundColor Green
+  Write-Host "API: http://localhost:4000/api" -ForegroundColor Green
+  Write-Host "API health: http://localhost:4000/health" -ForegroundColor Green
+  Write-Host "AI health: http://localhost:8000/health" -ForegroundColor Green
+  Write-Host "MinIO console: http://localhost:9001" -ForegroundColor Green
+  Write-Host ""
+  Write-Host "Demo sign-in:" -ForegroundColor Cyan
+  Write-Host "  admin@eventgrid.dev / any password" -ForegroundColor Green
+  Write-Host "  sales@eventgrid.dev / any password" -ForegroundColor Green
 }
 
-Write-Step "Building and starting the full EventGrid stack with Docker Compose"
-Invoke-CheckedCommand `
-  -FilePath $script:DockerCommand `
-  -Arguments @("compose", "up", "-d", "--build") `
-  -FailureMessage "Docker Compose failed to start the EventGrid stack. Review the Docker output above, fix the reported issue, and rerun scripts\deploy-local.ps1."
-
-if (-not $SkipWait) {
-  Write-Step "Waiting for EventGrid services"
-  Wait-Port -Port 5432
-  Wait-Port -Port 6379
-  Wait-Port -Port 8000
-  Wait-Port -Port 4000
-  Wait-Port -Port 3000
-  Wait-Http -Url "http://localhost:8000/health" -TimeoutSeconds 90
-  Wait-Http -Url "http://localhost:4000/health" -TimeoutSeconds 120
-  Wait-Http -Url "http://localhost:3000/health" -TimeoutSeconds 120
+try {
+  Main
+} catch {
+  Write-Host ""
+  Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+  exit 1
 }
-
-Write-Step "EventGrid deployment complete"
-Write-Host "Web: http://localhost:3000" -ForegroundColor Green
-Write-Host "API: http://localhost:4000/api" -ForegroundColor Green
-Write-Host "API health: http://localhost:4000/health" -ForegroundColor Green
-Write-Host "AI health: http://localhost:8000/health" -ForegroundColor Green
-Write-Host "MinIO console: http://localhost:9001" -ForegroundColor Green
-Write-Host ""
-Write-Host "Demo sign-in:" -ForegroundColor Cyan
-Write-Host "  admin@eventgrid.dev / any password" -ForegroundColor Green
-Write-Host "  sales@eventgrid.dev / any password" -ForegroundColor Green
