@@ -41,6 +41,29 @@ function Get-RequiredCommand {
   throw "$Label is required but was not found on PATH."
 }
 
+function Invoke-CheckedCommand {
+  param(
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$FailureMessage
+  )
+
+  & $FilePath @Arguments
+
+  if ($LASTEXITCODE -ne 0) {
+    throw $FailureMessage
+  }
+}
+
+function Assert-DockerDaemonRunning {
+  Write-Step "Checking Docker daemon"
+  & $script:DockerCommand info *> $null
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "Docker is installed but the Docker daemon is not running. Start Docker Desktop (or the Docker service) and rerun scripts\deploy-local.ps1."
+  }
+}
+
 function Test-PortOpen {
   param([int]$Port)
 
@@ -101,6 +124,7 @@ function Wait-Http {
 Set-Location $root
 
 $script:DockerCommand = Get-RequiredCommand -Names @("docker", "docker.exe") -Label "Docker"
+Assert-DockerDaemonRunning
 
 if (-not $SkipEnvBootstrap) {
   Write-Step "Ensuring local environment files exist"
@@ -110,7 +134,10 @@ if (-not $SkipEnvBootstrap) {
 }
 
 Write-Step "Building and starting the full EventGrid stack with Docker Compose"
-& $script:DockerCommand compose up -d --build
+Invoke-CheckedCommand `
+  -FilePath $script:DockerCommand `
+  -Arguments @("compose", "up", "-d", "--build") `
+  -FailureMessage "Docker Compose failed to start the EventGrid stack. Review the Docker output above, fix the reported issue, and rerun scripts\deploy-local.ps1."
 
 if (-not $SkipWait) {
   Write-Step "Waiting for EventGrid services"

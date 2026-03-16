@@ -45,6 +45,8 @@ The fastest way to get EventGrid running locally is:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-local.ps1
 ```
 
+Docker Desktop must already be running before you execute the script.
+
 This script:
 
 1. Creates missing local env files from the checked-in examples.
