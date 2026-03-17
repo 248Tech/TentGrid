@@ -3,8 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@eventgrid/types"],
-  experimental: {
-    typedRoutes: false,
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(Array.isArray(config.externals) ? config.externals : []), "canvas"];
+    }
+    return config;
   },
 };
 

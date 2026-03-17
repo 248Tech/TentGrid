@@ -31,8 +31,16 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const port = config.get<number>("PORT") ?? 4000;
 
+  const frontendUrl =
+    process.env["FRONTEND_URL"] ?? `http://localhost:3000`;
+
   await app.listen(port);
-  logger.log(`EventGrid API running on http://localhost:${port}/api`);
+
+  logger.log("─────────────────────────────────────────────");
+  logger.log(`  UI:     ${frontendUrl}`);
+  logger.log(`  API:    http://localhost:${port}/api`);
+  logger.log(`  Health: http://localhost:${port}/health`);
+  logger.log("─────────────────────────────────────────────");
 }
 
 bootstrap();

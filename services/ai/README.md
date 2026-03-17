@@ -1,8 +1,22 @@
 # EventGrid AI Service
 
-Async diagram interpretation service for EventGrid Phase 5.
+Async diagram interpretation sidecar for EventGrid. Runs as a FastAPI service alongside the main stack.
 
-## Local development
+## Quick start (via Docker Compose)
+
+The AI service starts automatically as part of the full stack:
+
+```bash
+# Linux/macOS
+bash scripts/deploy-local.sh
+
+# Windows
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-local.ps1
+```
+
+Health check: `http://localhost:8000/health`
+
+## Local development (standalone)
 
 ```bash
 pip install -r requirements.txt
@@ -18,7 +32,7 @@ uvicorn main:app --reload --port 8000
 ## Integration
 
 The NestJS `AiProcessor` in `apps/api/src/ai/ai.processor.ts` calls this service.
-Set `AI_SERVICE_URL=http://localhost:8000` in the API `.env` file.
+Set `AI_SERVICE_URL=http://localhost:8000` in the API `.env` file (done automatically by the deploy scripts).
 
 If the service is unavailable, the processor creates an empty stub draft and marks the job completed so the user can still proceed.
 

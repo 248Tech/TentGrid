@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
-import { EXPORT_QUEUE } from "./jobs.module";
+import { EXPORT_QUEUE } from "./jobs.constants";
 import { PrismaService } from "../prisma/prisma.service";
 import { pinoLogger } from "../common/logger";
 

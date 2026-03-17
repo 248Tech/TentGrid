@@ -120,7 +120,7 @@ function NewProjectModal({
   const { register, handleSubmit, formState: { isSubmitting, errors } } = useForm<NewProjectFormData>();
 
   async function onSubmit(data: NewProjectFormData) {
-    const project = await apiFetch<{ id: string }>(`/v1/teams/${teamId}/projects`, {
+    const project = await apiFetch<{ id: string }>(`/api/v1/teams/${teamId}/projects`, {
       method: "POST",
       body: JSON.stringify({ ...data, actorUserId: userId }),
     });

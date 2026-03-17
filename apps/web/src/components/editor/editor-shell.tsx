@@ -1,12 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAutosave } from "@/hooks/use-autosave";
 import { EditorTopBar } from "./editor-top-bar";
 import { EditorLeftPanel } from "./editor-left-panel";
-import { EditorCanvas } from "./editor-canvas";
 import { EditorRightPanel } from "./editor-right-panel";
 import { EditorBottomPanel } from "./editor-bottom-panel";
+
+const EditorCanvas = dynamic(() => import("./editor-canvas").then((m) => m.EditorCanvas), { ssr: false });
 
 interface Props {
   project: {

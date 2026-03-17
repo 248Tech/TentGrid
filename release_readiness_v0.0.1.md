@@ -55,14 +55,15 @@ Status: complete for initial release with limited implementation scope.
 - Review comments, approvals, skin presets, presence, and quote endpoints exist.
 - The AI service currently runs as a scaffold and returns stub detections. This is acceptable for `v0.0.1` only because the limitation is now explicit in the README and release notes.
 
-## Initial deployment baseline
+## Deployment baseline
 
-The repository now supports a single-script initial deployment path:
+The repository supports a single-command deployment path on both platforms:
 
-- `scripts/deploy-local.ps1` bootstraps env files and starts the complete Docker Compose stack.
+- `scripts/deploy-local.sh` — Linux/macOS bootstrap: copies env files, builds, and starts the full Docker Compose stack.
+- `scripts/deploy-local.ps1` — Windows bootstrap: same steps via PowerShell.
 - `docker-compose.yml` orchestrates PostgreSQL, Redis, MinIO, AI, API, and web services.
 - Health endpoints exist for the API, web app, and AI service.
-- Root package scripts expose deploy/build/typecheck/database commands.
+- Docker build verified: both `apps/api` and `apps/web` build and start successfully end-to-end.
 
 ## Release boundaries
 
@@ -71,7 +72,6 @@ The following items are intentionally outside the promise of `v0.0.1`:
 - Production-grade credential auth and account management.
 - Real AI computer-vision inference.
 - Managed cloud deployment, secret rotation, and observability.
-- Formal CI verification of the live container stack from inside this sandbox.
 
 ## Sign-off notes
 

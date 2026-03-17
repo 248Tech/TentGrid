@@ -9,7 +9,8 @@ Initial public project cut for EventGrid.
 - Business workflow support for project search, counts, table numbering, and snapshot-based revisions.
 - Venue and spatial groundwork with reusable venue geometry, map view persistence, and calibration support.
 - AI/review/quote scaffolding wired into the API and Python sidecar so the stack can run end-to-end in local demo mode.
-- Single-script deployment path via `scripts/deploy-local.ps1` and full container orchestration via `docker compose`.
+- Single-command deployment on both Linux/macOS (`scripts/deploy-local.sh`) and Windows (`scripts/deploy-local.ps1`).
+- Verified Docker Compose build: full stack builds and starts cleanly from one command.
 
 ## Initial release scope
 
@@ -23,6 +24,14 @@ Initial public project cut for EventGrid.
 - Production hosting, secrets management, observability, and managed object storage should be treated as post-`v0.0.1` hardening work.
 
 ## First run
+
+**Linux / macOS:**
+
+```bash
+bash scripts/deploy-local.sh
+```
+
+**Windows:**
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-local.ps1

@@ -1,7 +1,7 @@
 {
   "name": "eventgrid",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "EventGrid is a browser-based event layout, venue planning, spatial mapping, and quoting platform for event sales and operations teams.",
   "homepage": "https://github.com/248Tech/TentGrid#readme",
   "repository": {

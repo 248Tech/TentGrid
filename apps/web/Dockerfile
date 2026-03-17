@@ -18,6 +18,8 @@ FROM deps AS builder
 COPY packages/types packages/types
 COPY apps/web apps/web
 
+RUN pnpm install --frozen-lockfile
+
 RUN pnpm --filter @eventgrid/types build
 RUN pnpm --filter @eventgrid/web build
 

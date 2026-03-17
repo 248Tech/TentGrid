@@ -9,6 +9,7 @@ import {
   type VenueSummary,
   type CreateVenuePayload,
 } from "@/lib/api";
+import { logger } from "@/lib/logdump";
 
 const TEAM_ID = process.env.NEXT_PUBLIC_TEAM_ID ?? "dev-team";
 const ACTOR_USER_ID = "system";
@@ -48,9 +49,21 @@ export default function VenuesPage() {
 
   useEffect(() => {
     setLoading(true);
+    logger.info("VenuesPage", "Fetching venues", { teamId: TEAM_ID });
     listVenues(TEAM_ID)
-      .then(setVenues)
-      .catch((e) => setError(e.message))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) {
+          logger.warn("VenuesPage", "API returned non-array for venues", { data });
+        } else {
+          logger.info("VenuesPage", "Venues loaded", { count: list.length });
+        }
+        setVenues(list);
+      })
+      .catch((e) => {
+        logger.error("VenuesPage", "Failed to load venues", { error: e.message });
+        setError(e.message);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -65,8 +78,10 @@ export default function VenuesPage() {
     if (!form.name.trim()) return;
     setCreating(true);
     setCreateError(null);
+    logger.info("VenuesPage", "Creating venue", { name: form.name });
     try {
       const created = await createVenue(TEAM_ID, form, ACTOR_USER_ID);
+      logger.info("VenuesPage", "Venue created", { id: created.id, name: created.name });
       setVenues((prev) => [
         ...prev,
         {
@@ -82,7 +97,9 @@ export default function VenuesPage() {
       setForm(DEFAULT_FORM);
       setShowForm(false);
     } catch (e: unknown) {
-      setCreateError(e instanceof Error ? e.message : "Failed to create venue");
+      const msg = e instanceof Error ? e.message : "Failed to create venue";
+      logger.error("VenuesPage", "Failed to create venue", { error: msg });
+      setCreateError(msg);
     } finally {
       setCreating(false);
     }

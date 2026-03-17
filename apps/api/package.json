@@ -1,17 +1,17 @@
 {
   "name": "@eventgrid/api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "EventGrid NestJS API for projects, venues, templates, spatial planning, AI review, and quote workflows.",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
-    "start": "node dist/main",
+    "start": "node dist/src/main",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "prisma": "prisma",
     "db:generate": "prisma generate",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node prisma/seed.ts"
   },

@@ -1,83 +1,115 @@
 # EventGrid
 
 ![Release](https://img.shields.io/github/v/release/248Tech/TentGrid?display_name=tag)
-![Stage](https://img.shields.io/badge/stage-initial%20release-f59e0b)
+![Stage](https://img.shields.io/badge/stage-v0.0.2-16a34a)
 ![Deploy](https://img.shields.io/badge/deploy-docker%20compose-2496ED?logo=docker&logoColor=white)
 ![Stack](https://img.shields.io/badge/stack-Next.js%20%7C%20NestJS%20%7C%20Prisma%20%7C%20PostgreSQL-111827)
 [![CI](https://github.com/248Tech/TentGrid/actions/workflows/ci.yml/badge.svg)](https://github.com/248Tech/TentGrid/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/248Tech/TentGrid)](https://github.com/248Tech/TentGrid/blob/main/LICENSE)
-[![PRD](https://img.shields.io/badge/spec-PRD-0ea5e9)](./product_requirements_document.md)
-[![Schema](https://img.shields.io/badge/spec-Database%20Schema-10b981)](./database_schema.md)
-[![Plan](https://img.shields.io/badge/spec-Development%20Plan-f97316)](./development_plan.md)
 
-EventGrid is a browser-based event layout platform for tent planning, venue planning, floor plan design, event sales operations, and quoting workflows. It gives sales and operations teams one workspace for creating layouts, reusing venue data, tracking versions, generating counts, handling spatial context, and preparing client-ready deliverables.
+EventGrid is a browser-based event layout platform for tent planning, venue planning, floor plan design, event sales operations, and quoting workflows.
 
-## About EventGrid
+## Running EventGrid
 
-EventGrid is designed to replace the fragmented workflow of whiteboards, PDFs, screenshots, spreadsheets, and ad hoc CAD files used to scope event setups. The product combines a lightweight canvas editor, reusable venue records, search and reporting workflows, spatial overlays, and AI-assisted intake into one system that can move a user from intake to layout draft to export.
+### Step 1 — Install Docker Desktop
 
-For `v0.0.1`, the repository is positioned as an initial runnable release for local deployment, demos, and continued development. It is not yet presented as a hardened production SaaS product.
+EventGrid runs entirely in containers. You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running before you continue.
 
-## What Ships In v0.0.1
+- **Windows / macOS:** Download and install Docker Desktop, then open it and wait until the whale icon in your system tray shows "Docker Desktop is running."
+- **Linux:** Install Docker Engine with the Compose plugin (`docker compose` v2).
 
-- Project, team, template, venue, asset, audit, and version data models backed by NestJS, Prisma, PostgreSQL, and shared TypeScript contracts.
-- Browser-based web app with sign-in, dashboard, templates, venues, venue detail, and project editor surfaces.
-- Core editor workflows for object placement, tent configuration, layout state persistence, reporting, and export job orchestration.
-- Business workflow support for project search, guest/count reporting, table numbering, and version snapshots.
-- Venue and spatial support for reusable venue geometry, fixtures, utilities, map view persistence, and calibration endpoints.
-- AI and advanced-ops scaffolding for uploads, review comments, approvals, quote retrieval, presence, and skin presets.
-- Full local container stack for PostgreSQL, Redis, MinIO, AI service, API, and web app.
+### Step 2 — Launch the app
 
-## Initial Release Boundaries
+Open a terminal in the project folder and run the one-liner for your OS:
 
-- Credential auth is demo-local for `v0.0.1` and uses seeded development identities.
-- The AI service is wired end-to-end but still returns stub detections instead of production computer-vision results.
-- GitHub OAuth is optional and must be configured manually.
-- Production cloud deployment, secret management, and observability should be treated as the next hardening layer after this release.
+**macOS / Linux**
 
-## Quick Start
+```bash
+bash scripts/deploy-local.sh
+```
 
-### Single-script deployment
-
-The fastest way to get EventGrid running locally is:
+**Windows (PowerShell)**
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-local.ps1
 ```
 
-Docker Desktop must already be running before you execute the script.
+The script will:
 
-This script:
+1. Copy the example env files into place (first run only).
+2. Build and start all services (database, cache, storage, AI sidecar, API, web app).
+3. Wait until every service passes its health check.
+4. Print the URLs and demo credentials when ready.
 
-1. Creates missing local env files from the checked-in examples.
-2. Builds and starts the full Docker Compose stack.
-3. Waits for the API, web app, and AI sidecar health endpoints.
-4. Prints the local URLs and demo credentials.
+> The first launch takes a few minutes while Docker pulls base images and builds the containers. Subsequent starts are much faster.
 
-After startup:
+### Step 3 — Open the app
 
-- Web: `http://localhost:3000`
-- API: `http://localhost:4000/api`
-- API health: `http://localhost:4000/health`
-- AI health: `http://localhost:8000/health`
-- MinIO console: `http://localhost:9001`
+Once the script finishes, open your browser and go to:
 
-Demo sign-in:
+**`http://localhost:3000`**
 
-- `admin@eventgrid.dev` / any password
-- `sales@eventgrid.dev` / any password
+Sign in with one of the demo accounts (any password works):
 
-### Container-only command
+| Account | Role |
+|---|---|
+| `admin@eventgrid.dev` | Admin |
+| `sales@eventgrid.dev` | Sales |
 
-If you want the raw container workflow without the bootstrap script:
+### Stopping the app
 
 ```bash
+docker compose down
+```
+
+Add `-v` to also delete the database and storage volumes: `docker compose down -v`
+
+## About EventGrid
+
+EventGrid replaces the fragmented workflow of whiteboards, PDFs, screenshots, spreadsheets, and ad hoc CAD files used to scope event setups. It combines a canvas editor, reusable venue records, search and reporting, spatial overlays, and AI-assisted intake into one system that can move a user from intake to layout draft to export.
+
+`v0.0.2` is an iterative runnable release for local deployment, demos, and continued development. It is not yet a hardened production SaaS product.
+
+**v0.0.2 includes:**
+
+- Project, team, template, venue, asset, audit, and version data models.
+- Browser-based app with sign-in, dashboard, templates, venues, venue detail, and project editor.
+- Core editor workflows for object placement, tent configuration, layout state persistence, reporting, and export jobs.
+- Business workflows for project search, guest/count reporting, table numbering, and version snapshots.
+- Venue and spatial support for reusable geometry, fixtures, utilities, map view persistence, and calibration.
+- Full local container stack: PostgreSQL, Redis, MinIO, AI service, API, and web app.
+
+**Known boundaries for v0.0.2:**
+
+- Auth uses seeded demo identities only (no real user accounts).
+- The AI service returns stub detections, not production computer-vision results.
+- GitHub OAuth is optional and must be configured manually.
+- Production cloud deployment, secret management, and observability are out of scope for this release.
+
+## Service URLs
+
+| Service | URL | Purpose |
+|---|---|---|
+| Web app | `http://localhost:3000` | EventGrid frontend |
+| API | `http://localhost:4000/api` | EventGrid backend |
+| API health | `http://localhost:4000/health` | Health check |
+| AI health | `http://localhost:8000/health` | AI sidecar health |
+| MinIO console | `http://localhost:9001` | Object storage admin UI |
+
+## Manual container start (no script)
+
+If you prefer to skip the bootstrap script, copy the env files first, then start Docker Compose directly:
+
+```bash
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.local.example apps/web/.env.local
 docker compose up -d --build
 ```
 
-### Local development workflow
+## Developer setup (running outside containers)
 
-If you want to run the apps outside containers:
+If you want to run the apps directly on your machine for development:
 
 ```bash
 pnpm install
@@ -87,57 +119,24 @@ pnpm db:seed
 pnpm dev
 ```
 
-Use Docker for PostgreSQL, Redis, and MinIO, or point the env files at managed services.
-
-## Repository Layout
-
-```text
-eventgrid/
-├── apps/
-│   ├── api/                  # NestJS API
-│   └── web/                  # Next.js app
-├── packages/
-│   └── types/                # Shared contracts
-├── services/
-│   └── ai/                   # Python AI sidecar
-├── scripts/
-│   └── deploy-local.ps1      # Single-script local bootstrap
-├── product_requirements_document.md
-├── database_schema.md
-├── development_plan.md
-└── technical_blueprint.md
-```
+Requires Node 20+, pnpm 9+, and external PostgreSQL, Redis, and MinIO instances (or point the env files at managed services).
 
 ## Tech Stack
 
 - Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS, NextAuth, React Konva
 - Backend: NestJS 10, Prisma, PostgreSQL, BullMQ, Redis
-- Spatial and assets: Mapbox-ready spatial contracts, S3-compatible storage, MinIO for local deployment
-- AI sidecar: FastAPI service scaffold for diagram intake and normalization
+- Storage: S3-compatible (MinIO for local), Mapbox-ready spatial contracts
+- AI sidecar: FastAPI scaffold for diagram intake and normalization
 - Tooling: pnpm workspace, Turbo, Docker Compose
 
 ## Documentation
 
+- [Quickstart](./quickstart.md)
+- [Release Notes v0.0.2](./release_notes_v0.0.2.md)
+- [Release Notes v0.0.1](./release_notes_v0.0.1.md)
+- [Changelog](./CHANGELOG.md)
 - [Product Requirements Document](./product_requirements_document.md)
 - [Database Schema](./database_schema.md)
 - [Development Plan](./development_plan.md)
 - [Technical Blueprint](./technical_blueprint.md)
 - [Release Readiness v0.0.1](./release_readiness_v0.0.1.md)
-- [Release Notes v0.0.1](./release_notes_v0.0.1.md)
-- [Changelog](./CHANGELOG.md)
-
-## Service Defaults
-
-| Service | Default | Purpose |
-| --- | --- | --- |
-| PostgreSQL | `localhost:5432/eventgrid` | Primary relational store |
-| Redis | `localhost:6379` | Queues and ephemeral state |
-| MinIO | `localhost:9000` | Local S3-compatible asset storage |
-| MinIO Console | `localhost:9001` | Local object storage admin UI |
-| AI Service | `localhost:8000` | Diagram-processing sidecar |
-| API | `localhost:4000` | EventGrid backend |
-| Web | `localhost:3000` | EventGrid frontend |
-
-## Release Notes
-
-`v0.0.1` is the first tagged release of EventGrid. It is intended to be easy to run, easy to evaluate, and explicit about what is real versus scaffolded. See [release_notes_v0.0.1.md](./release_notes_v0.0.1.md) for the release summary and [release_readiness_v0.0.1.md](./release_readiness_v0.0.1.md) for the phase audit used to prepare the release.
