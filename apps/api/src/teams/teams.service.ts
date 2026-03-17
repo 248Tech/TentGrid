@@ -32,6 +32,11 @@ export class TeamsService {
     const updated = await this.prisma.teamMembership.update({
       where: { teamId_userId: { teamId, userId } },
       data: { role: role as any },
+      include: {
+        user: {
+          select: { id: true, email: true, fullName: true, avatarUrl: true },
+        },
+      },
     });
 
     await this.audit.log({

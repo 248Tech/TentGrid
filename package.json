@@ -1,7 +1,7 @@
 {
   "name": "eventgrid",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "EventGrid is a browser-based event layout, venue planning, spatial mapping, and quoting platform for event sales and operations teams.",
   "homepage": "https://github.com/248Tech/TentGrid#readme",
   "repository": {
@@ -29,9 +29,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "db:generate": "pnpm --filter @eventgrid/api prisma generate",
+    "db:push": "pnpm --filter @eventgrid/api prisma db push",
     "db:deploy": "pnpm --filter @eventgrid/api prisma migrate deploy",
     "db:migrate": "pnpm --filter @eventgrid/api prisma migrate dev",
-    "db:seed": "pnpm --filter @eventgrid/api prisma db seed",
+    "db:seed": "pnpm --filter @eventgrid/api db:seed",
     "db:studio": "pnpm --filter @eventgrid/api prisma studio",
     "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-local.ps1",
     "deploy:local": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-local.ps1",

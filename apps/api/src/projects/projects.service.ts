@@ -33,7 +33,7 @@ export class ProjectsService {
       where: { id, teamId, archivedAt: null },
       include: {
         venue: true,
-        template: { select: { id: true, name: true } },
+        template: { select: { id: true, name: true, canvasDocument: true } },
         versions: {
           orderBy: { createdAt: "desc" },
           take: 10,
@@ -86,9 +86,12 @@ export class ProjectsService {
   }
 
   async update(teamId: string, id: string, userId: string, data: Partial<{
+    projectNumber: string;
     status: string;
     clientFirstName: string;
     clientLastName: string;
+    eventDate: string;
+    venueId: string | null;
     venueNameSnapshot: string;
     notes: string;
   }>) {
@@ -96,7 +99,12 @@ export class ProjectsService {
 
     const updated = await this.prisma.project.update({
       where: { id: project.id },
-      data: { ...data, status: data.status as any, updatedByUserId: userId },
+      data: {
+        ...data,
+        ...(data.eventDate ? { eventDate: new Date(data.eventDate) } : {}),
+        status: data.status as any,
+        updatedByUserId: userId,
+      },
     });
 
     await this.audit.log({

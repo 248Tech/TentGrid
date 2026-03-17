@@ -4,13 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { searchProjects } from "@/lib/api";
-import { apiFetch } from "@/lib/api-client";
 import type { ProjectSearchResult } from "@/lib/api";
-import { useForm } from "react-hook-form";
-
-function getTeamId(session: ReturnType<typeof useSession>["data"]): string {
-  return (session as any)?.memberships?.[0]?.teamId ?? "";
-}
+import { getCurrentTeamId } from "@/lib/session";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -97,135 +92,21 @@ function ProjectCard({
   );
 }
 
-interface NewProjectFormData {
-  projectNumber: string;
-  clientFirstName: string;
-  clientLastName: string;
-  eventDate: string;
-  venueNameSnapshot: string;
-  notes: string;
-}
-
-function NewProjectModal({
-  teamId,
-  userId,
-  onClose,
-  onCreated,
-}: {
-  teamId: string;
-  userId: string;
-  onClose: () => void;
-  onCreated: (id: string) => void;
-}) {
-  const { register, handleSubmit, formState: { isSubmitting, errors } } = useForm<NewProjectFormData>();
-
-  async function onSubmit(data: NewProjectFormData) {
-    const project = await apiFetch<{ id: string }>(`/v1/teams/${teamId}/projects`, {
-      method: "POST",
-      body: JSON.stringify({ ...data, actorUserId: userId }),
-    });
-    onCreated(project.id);
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-lg p-6 shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">New Project</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">
-            ✕
-          </button>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Project # *</label>
-              <input
-                {...register("projectNumber", { required: true })}
-                className="w-full border rounded px-3 py-2 text-sm"
-                placeholder="EG-001"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Event Date *</label>
-              <input
-                {...register("eventDate", { required: true })}
-                type="date"
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">First Name *</label>
-              <input
-                {...register("clientFirstName", { required: true })}
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Last Name *</label>
-              <input
-                {...register("clientLastName", { required: true })}
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Venue Name</label>
-            <input
-              {...register("venueNameSnapshot")}
-              className="w-full border rounded px-3 py-2 text-sm"
-              placeholder="Riverside Park"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
-            <textarea
-              {...register("notes")}
-              className="w-full border rounded px-3 py-2 text-sm"
-              rows={2}
-            />
-          </div>
-          <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50"
-            >
-              {isSubmitting ? "Creating..." : "Create Project"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardClient() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const teamId = getTeamId(session);
-  const userId = (session?.user as any)?.id ?? "";
+  const teamId = getCurrentTeamId(session);
 
   const [query, setQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
   const [projects, setProjects] = useState<ProjectSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showNewProject, setShowNewProject] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!teamId) return;
+    if (status === "loading" || !teamId) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void fetchProjects(query, activeStatus);
@@ -254,6 +135,22 @@ export default function DashboardClient() {
     }
   }
 
+  if (status === "loading") {
+    return (
+      <div className="py-20 text-center text-sm text-muted-foreground">
+        Loading projects...
+      </div>
+    );
+  }
+
+  if (!teamId) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        No active team was found for this account.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -264,7 +161,7 @@ export default function DashboardClient() {
           </p>
         </div>
         <button
-          onClick={() => setShowNewProject(true)}
+          onClick={() => router.push("/projects/new")}
           className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:opacity-90"
         >
           + New Project
@@ -326,7 +223,7 @@ export default function DashboardClient() {
           </p>
           {!query.trim() && !activeStatus && (
             <button
-              onClick={() => setShowNewProject(true)}
+              onClick={() => router.push("/projects/new")}
               className="mt-4 px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:opacity-90"
             >
               Create Project
@@ -343,18 +240,6 @@ export default function DashboardClient() {
             />
           ))}
         </div>
-      )}
-
-      {showNewProject && teamId && (
-        <NewProjectModal
-          teamId={teamId}
-          userId={userId}
-          onClose={() => setShowNewProject(false)}
-          onCreated={(id) => {
-            setShowNewProject(false);
-            router.push(`/projects/${id}/editor`);
-          }}
-        />
       )}
     </div>
   );

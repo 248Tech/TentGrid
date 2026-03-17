@@ -1,6 +1,6 @@
 {
   "name": "@eventgrid/types",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Shared EventGrid TypeScript contracts for canvas, venue, review, AI, and quote workflows.",
   "main": "./src/index.ts",

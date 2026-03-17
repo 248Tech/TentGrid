@@ -2,17 +2,23 @@
 
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEditorStore } from "@/store/editor-store";
 import { apiFetch } from "@/lib/api";
 import { EditorShell } from "./editor-shell";
 import type { CanvasDocument } from "@eventgrid/types";
+import { getCurrentTeamId, getCurrentUserId } from "@/lib/session";
 
 interface ProjectData {
   id: string;
   projectNumber: string;
   clientFirstName: string;
   clientLastName: string;
+  eventDate: string;
+  notes: string | null;
+  venueId: string | null;
+  venueNameSnapshot: string | null;
   currentVersionId: string | null;
   templateId: string | null;
   template: { id: string; name: string; canvasDocument?: unknown } | null;
@@ -22,10 +28,6 @@ interface ProjectData {
 interface VersionData {
   id: string;
   canvasDocument: CanvasDocument | null;
-}
-
-function getTeamId(session: ReturnType<typeof useSession>["data"]): string {
-  return (session as any)?.memberships?.[0]?.teamId ?? "";
 }
 
 const BLANK_LAYERS = [
@@ -54,9 +56,12 @@ function makeBlankDocument(): CanvasDocument {
 }
 
 export function EditorPage({ projectId }: { projectId: string }) {
-  const { data: session } = useSession();
-  const teamId = getTeamId(session);
+  const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const teamId = getCurrentTeamId(session);
+  const userId = getCurrentUserId(session);
   const loadDocument = useEditorStore((s) => s.loadDocument);
+  const showSetup = searchParams.get("setup") === "1";
 
   const { data: project, isLoading: projectLoading } = useQuery<ProjectData>({
     queryKey: ["project", teamId, projectId],
@@ -86,6 +91,22 @@ export function EditorPage({ projectId }: { projectId: string }) {
     }
   }, [project, version, versionLoading, projectId, loadDocument]);
 
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading project...</p>
+      </div>
+    );
+  }
+
+  if (!teamId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">No active team was found for this account.</p>
+      </div>
+    );
+  }
+
   if (projectLoading || !project) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -98,7 +119,8 @@ export function EditorPage({ projectId }: { projectId: string }) {
     <EditorShell
       project={project}
       teamId={teamId}
-      userId={(session?.user as any)?.id ?? ""}
+      userId={userId}
+      setupMode={showSetup}
     />
   );
 }

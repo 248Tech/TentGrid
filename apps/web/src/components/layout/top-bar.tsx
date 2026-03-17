@@ -13,6 +13,12 @@ interface TopBarProps {
 export function TopBar({ session, onMenuClick }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  async function handleSignOut() {
+    setDropdownOpen(false);
+    await signOut({ redirect: false });
+    window.location.assign("/sign-in");
+  }
+
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-white">
       <button
@@ -43,7 +49,7 @@ export function TopBar({ session, onMenuClick }: TopBarProps) {
               <p className="text-xs text-muted-foreground truncate">{session.user?.email}</p>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: "/sign-in" })}
+              onClick={() => { void handleSignOut(); }}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <LogOut className="h-4 w-4" />

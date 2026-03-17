@@ -1,6 +1,6 @@
 {
   "name": "@eventgrid/web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "EventGrid Next.js application for event layout design, venue mapping, reporting, review, and quoting.",
   "scripts": {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Plus, MapPin, Building2 } from "lucide-react";
 import {
@@ -9,9 +10,7 @@ import {
   type VenueSummary,
   type CreateVenuePayload,
 } from "@/lib/api";
-
-const TEAM_ID = process.env.NEXT_PUBLIC_TEAM_ID ?? "dev-team";
-const ACTOR_USER_ID = "system";
+import { getCurrentTeamId, getCurrentUserId } from "@/lib/session";
 
 const BG_MODE_LABELS: Record<string, string> = {
   GRID: "Grid",
@@ -37,7 +36,10 @@ const DEFAULT_FORM: CreateVenuePayload = {
 };
 
 export default function VenuesPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const teamId = getCurrentTeamId(session);
+  const userId = getCurrentUserId(session);
   const [venues, setVenues] = useState<VenueSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +49,22 @@ export default function VenuesPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (status === "loading") return;
+
+    if (!teamId) {
+      setVenues([]);
+      setError("No active team was found for this account.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    listVenues(TEAM_ID)
+    setError(null);
+    listVenues(teamId)
       .then(setVenues)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [status, teamId]);
 
   function handleFieldChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -62,11 +74,11 @@ export default function VenuesPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !teamId || !userId) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await createVenue(TEAM_ID, form, ACTOR_USER_ID);
+      const created = await createVenue(teamId, form, userId);
       setVenues((prev) => [
         ...prev,
         {
@@ -88,6 +100,14 @@ export default function VenuesPage() {
     }
   }
 
+  if (status === "loading") {
+    return (
+      <div className="rounded-lg border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        Loading venues...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -99,8 +119,9 @@ export default function VenuesPage() {
           </p>
         </div>
         <button
+          disabled={!teamId}
           onClick={() => setShowForm((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           New Venue

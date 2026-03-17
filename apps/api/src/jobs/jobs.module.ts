@@ -3,9 +3,7 @@ import { BullModule } from "@nestjs/bull";
 import { ExportProcessor } from "./export.processor";
 import { JobsService } from "./jobs.service";
 import { JobsController } from "./jobs.controller";
-
-export const EXPORT_QUEUE = "export";
-export const AI_QUEUE = "ai";
+import { EXPORT_QUEUE, AI_QUEUE } from "./jobs.constants";
 
 @Module({
   imports: [

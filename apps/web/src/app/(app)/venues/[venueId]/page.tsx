@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Check, AlertCircle } from "lucide-react";
 import {
@@ -13,9 +14,7 @@ import {
   type VenueDetail,
 } from "@/lib/api";
 import { BackgroundModeToggle } from "@/components/spatial/background-mode-toggle";
-
-const TEAM_ID = process.env.NEXT_PUBLIC_TEAM_ID ?? "dev-team";
-const ACTOR_USER_ID = "system";
+import { getCurrentTeamId, getCurrentUserId } from "@/lib/session";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -123,9 +122,12 @@ function parseGeometrySummary(geometry: unknown) {
 }
 
 export default function VenueDetailPage() {
+  const { data: session, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const venueId = params.venueId as string;
+  const teamId = getCurrentTeamId(session);
+  const userId = getCurrentUserId(session);
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,10 +155,18 @@ export default function VenueDetailPage() {
   const applySave = useSaveState();
 
   const loadVenue = useCallback(async () => {
+    if (status === "loading") return;
+
+    if (!teamId) {
+      setLoadError("No active team was found for this account.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getVenue(TEAM_ID, venueId);
+      const data = await getVenue(teamId, venueId);
       setVenue(data);
       setGeometryJson(
         data.geometry ? JSON.stringify(data.geometry, null, 2) : ""
@@ -185,17 +195,18 @@ export default function VenueDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [venueId]);
+  }, [status, teamId, venueId]);
 
   useEffect(() => {
     loadVenue();
   }, [loadVenue]);
 
   async function handleSaveGeometry() {
+    if (!teamId || !userId) return;
     geometrySave.setSaving();
     try {
       const parsed = geometryJson.trim() ? JSON.parse(geometryJson) : null;
-      await updateVenueGeometry(TEAM_ID, venueId, parsed, ACTOR_USER_ID);
+      await updateVenueGeometry(teamId, venueId, parsed, userId);
       geometrySave.setSaved();
     } catch (e: unknown) {
       geometrySave.setError(
@@ -205,10 +216,11 @@ export default function VenueDetailPage() {
   }
 
   async function handleSaveFixtures() {
+    if (!teamId || !userId) return;
     fixturesSave.setSaving();
     try {
       const parsed = fixturesJson.trim() ? JSON.parse(fixturesJson) : null;
-      await updateVenueFixtures(TEAM_ID, venueId, parsed, ACTOR_USER_ID);
+      await updateVenueFixtures(teamId, venueId, parsed, userId);
       fixturesSave.setSaved();
     } catch (e: unknown) {
       fixturesSave.setError(
@@ -218,10 +230,11 @@ export default function VenueDetailPage() {
   }
 
   async function handleSaveUtilities() {
+    if (!teamId || !userId) return;
     utilitiesSave.setSaving();
     try {
       const parsed = utilitiesJson.trim() ? JSON.parse(utilitiesJson) : null;
-      await updateVenueUtilities(TEAM_ID, venueId, parsed, ACTOR_USER_ID);
+      await updateVenueUtilities(teamId, venueId, parsed, userId);
       utilitiesSave.setSaved();
     } catch (e: unknown) {
       utilitiesSave.setError(
@@ -231,6 +244,7 @@ export default function VenueDetailPage() {
   }
 
   async function handleSaveMapView() {
+    if (!teamId || !userId) return;
     mapViewSave.setSaving();
     try {
       const mapView = {
@@ -243,7 +257,7 @@ export default function VenueDetailPage() {
         pitch: 0,
         backgroundMode: bgMode,
       };
-      await updateVenueMapView(TEAM_ID, venueId, mapView, ACTOR_USER_ID);
+      await updateVenueMapView(teamId, venueId, mapView, userId);
       mapViewSave.setSaved();
     } catch (e: unknown) {
       mapViewSave.setError(
@@ -253,15 +267,10 @@ export default function VenueDetailPage() {
   }
 
   async function handleApplyToProject() {
-    if (!applyProjectId.trim()) return;
+    if (!teamId || !userId || !applyProjectId.trim()) return;
     applySave.setSaving();
     try {
-      await applyVenueToProject(
-        TEAM_ID,
-        venueId,
-        applyProjectId.trim(),
-        ACTOR_USER_ID
-      );
+      await applyVenueToProject(teamId, venueId, applyProjectId.trim(), userId);
       applySave.setSaved();
     } catch (e: unknown) {
       applySave.setError(
@@ -271,6 +280,14 @@ export default function VenueDetailPage() {
   }
 
   if (loading) {
+    return (
+      <div className="p-8 text-center text-sm text-gray-400">
+        Loading venue...
+      </div>
+    );
+  }
+
+  if (status === "loading") {
     return (
       <div className="p-8 text-center text-sm text-gray-400">
         Loading venue...

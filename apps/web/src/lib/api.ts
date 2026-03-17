@@ -66,6 +66,22 @@ export type CountsSummary = {
   notes?: string[];
 };
 
+export type CreateProjectPayload = {
+  projectNumber: string;
+  clientFirstName: string;
+  clientLastName: string;
+  eventDate: string;
+  clientCompany?: string;
+  venueNameSnapshot?: string;
+  venueId?: string | null;
+  templateId?: string | null;
+  notes?: string;
+};
+
+export type UpdateProjectPayload = Partial<CreateProjectPayload> & {
+  status?: string;
+};
+
 // ─── Project search ───────────────────────────────────────────────────────────
 
 export async function searchProjects(
@@ -90,6 +106,32 @@ export async function searchProjects(
   const qs = query.toString();
   return apiFetch<ProjectSearchResult[]>(
     `/api/v1/teams/${teamId}/projects/search${qs ? `?${qs}` : ""}`
+  );
+}
+
+export async function createProject(
+  teamId: string,
+  data: CreateProjectPayload,
+  actorUserId: string,
+): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>(`/api/v1/teams/${teamId}/projects`, {
+    method: "POST",
+    body: JSON.stringify({ ...data, actorUserId }),
+  });
+}
+
+export async function updateProject(
+  teamId: string,
+  projectId: string,
+  data: UpdateProjectPayload,
+  actorUserId: string,
+): Promise<ProjectSearchResult> {
+  return apiFetch<ProjectSearchResult>(
+    `/api/v1/teams/${teamId}/projects/${projectId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ ...data, actorUserId }),
+    },
   );
 }
 
@@ -173,6 +215,39 @@ export type CreateVenuePayload = {
   postalCode?: string;
   notes?: string;
   defaultBackgroundMode?: string;
+};
+
+export type TemplateSummary = {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  sourceProjectVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TeamSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  settings: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TeamMemberSummary = {
+  id: string;
+  teamId: string;
+  userId: string;
+  role: string;
+  status: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    avatarUrl: string | null;
+  };
 };
 
 // ─── Venue CRUD ───────────────────────────────────────────────────────────────
@@ -270,6 +345,56 @@ export async function applyVenueToProject(
   return apiFetch<unknown>(
     `/api/v1/teams/${teamId}/venues/${venueId}/apply-to-project`,
     { method: "POST", body: JSON.stringify({ projectId, actorUserId }) }
+  );
+}
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+
+export async function listTemplates(teamId: string): Promise<TemplateSummary[]> {
+  return apiFetch<TemplateSummary[]>(`/api/v1/teams/${teamId}/templates`);
+}
+
+export async function createTemplate(
+  teamId: string,
+  data: {
+    name: string;
+    category?: string;
+    description?: string;
+    canvasDocument?: unknown;
+    sourceProjectVersionId?: string | null;
+  },
+  actorUserId: string,
+): Promise<TemplateSummary> {
+  return apiFetch<TemplateSummary>(`/api/v1/teams/${teamId}/templates`, {
+    method: "POST",
+    body: JSON.stringify({ ...data, actorUserId }),
+  });
+}
+
+// ─── Teams ────────────────────────────────────────────────────────────────────
+
+export async function getTeam(teamId: string): Promise<TeamSummary> {
+  return apiFetch<TeamSummary>(`/api/v1/teams/${teamId}`);
+}
+
+export async function listTeamMembers(
+  teamId: string,
+): Promise<TeamMemberSummary[]> {
+  return apiFetch<TeamMemberSummary[]>(`/api/v1/teams/${teamId}/members`);
+}
+
+export async function updateTeamMemberRole(
+  teamId: string,
+  userId: string,
+  role: string,
+  actorUserId: string,
+): Promise<TeamMemberSummary> {
+  return apiFetch<TeamMemberSummary>(
+    `/api/v1/teams/${teamId}/members/${userId}/role`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role, actorUserId }),
+    },
   );
 }
 
